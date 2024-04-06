@@ -8,3 +8,4 @@ A set of basic principles that every developer should be practicing in their cod
 - [ASP.Net Configuration](./AspNetConfiguration/_Overview.md)
 - [Dependency Inversion](./DependencyInversion/_Overview.md)
 - [Host Builder](./HostBuilder/_Overview.md)
+- [Logging](./Logging/_Overview.md)
