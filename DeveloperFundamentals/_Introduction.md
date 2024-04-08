@@ -9,3 +9,7 @@ A set of basic principles that every developer should be practicing in their cod
 - [Dependency Inversion](./DependencyInversion/_Overview.md)
 - [Host Builder](./HostBuilder/_Overview.md)
 - [Logging](./Logging/_Overview.md)
+- [IDEs](./IDEs/_Overview.md)
+- [Dapr](./Dapr/_Overview.md)
+- [Cloud](./Cloud/_Overview.md)
+- [Orleans](./Orleans/_Overview.md)
