@@ -22,7 +22,7 @@ public Person CreatePerson(string username)
 
 This approach uses string interpolation to contruct the "message". However, you may have noticed that you receive the following warning [CA2254: Template should be a static expression](https://learn.microsoft.com/en-nz/dotnet/fundamentals/code-analysis/quality-rules/ca2254).
 
-Let us examine the source code for the above extension method to discover the reason for this warning:
+Examining the source code for the above extension method we discover the reason for this warning:
 
 ```csharp
 //
@@ -81,3 +81,4 @@ The way you use this is:
 _logger.LogPersonCreated(person.Username);
 ```
 
+My view on this topic is that we create an inventory of logs.
