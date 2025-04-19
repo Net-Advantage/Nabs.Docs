@@ -1,57 +1,43 @@
-# Configuration in .NET
-
-Outline:
-
-1.  Introduction
-1.  Importance of application configuration
-1.  Creating and setting up an `appsettings.json` File
-1.  Creating and setting up a `secrets.json` File
-1.  `ConfigurationBuilder` code in a console application
-1.  Implement the `IOptions` pattern in a console application
-1.  Implement the `IOptionsMonitor` pattern in a console application
-1.  Conclusion
-
-Script:
+# Configuration in ASP.NET Core
 
 ## Introduction
 
-Welcome to our video presentation on Application Configuration in .NET 7.0. In this presentation, we'll cover the importance of application configuration, setting up the ConfigurationBuilder in a console application, and using appsettings.json and secrets.json files for configuration. We will also explore what is know as the Options pattern. This pattern helps you to structure you configuration keys and values and makes for a cleaner code outcome.
+We'll cover application configuration in ASP.NET Core using `appsettings.json` and `secrets.json` files for configuration.
+
+> Note: See the [Configuration Fundamentals in .NET](../Configuration/_Overview.md)
     
-## Importance of application configuration
+##  Configuration setup in ASP.NET Core
 
-Application configuration is essential for managing different settings and values used by your application. It allows you to separate these settings from your code, making it easier to maintain and deploy. Configuration files enable you to store information such as database connection strings, API keys, and other sensitive data securely and separately from your source code.
-    
-##  ConfigurationBuilder setup in a console application
+In ASP.NET Core configuration is part of the `WebApplicationBuilder`. Internally the private `ApplyDefaultAppConfigurationSlim` method is called which processes the following:
 
-To begin, let's set up the ConfigurationBuilder in a .NET 7.0 console application. First, install the required NuGet packages:
+- `configuration.AddJsonFile`
+- `configuration.AddUserSecrets`
+- `configuration.AddEnvironmentVariables`
+- `configuration.AddCommandLine`
 
-    - `Microsoft.Extensions.Configuration`
-    - `Microsoft.Extensions.Configuration.Json`
-    - `Microsoft.Extensions.Configuration.UserSecrets`
+You can view the source code [here](https://github.com/dotnet/runtime/blob/6149ca07d2202c2d0d518e10568c0d0dd3473576/src/libraries/Microsoft.Extensions.Hosting/src/HostingHostBuilderExtensions.cs#L229-L256).
+
+Install the required NuGet packages:
+
+    - `FluentValidation`
 
 ## Creating and setting up an `appsettings.json` file
 
-Add a new item to you console app project called `appsettings.json`. This file will contain the configuration settings for your application. The `appsettings.json` file is a JSON file that contains key-value pairs of configuration settings. The `appsettings.json` file is read at runtime and its values are made available to the application through the `IConfiguration` interface.
-
-Once you have added the `appsettings.json` file to your project, add the following JSON to the file:
+Update the `appsettings.json` file as follows:
 ```json
 {
-	"AppName": "Learning Basic Application Configuration",
-	"SecretSettings": {
-		"SuperSecret": "<< Placeholder: Value to be stored in secrets.json >>"
-	}
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "AppName": "Learning Basic Application Configuration",
+  "SecretSettings": {
+    "SuperSecret": "<< Placeholder: Value to be stored in secrets.json >>"
+  }
 }
-```
-
-Ensure that your `appsettings.json` file is set to `Copy if Newer` in the `Copy to Output Directory` of the properties window.
-
-The `.csproj` file will contain the following:
-```xml
-<ItemGroup>
-	<None Update="appsettings.json">
-	<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	</None>
-</ItemGroup>
 ```
 
 ## Creating and Setting Up a `secrets.json` File
@@ -77,70 +63,111 @@ Once you have added the `secrets.json` file to your project, add the following J
 
 Only add the key and value that you want to keep secret. The `secrets.json` file is not checked into source control and is only available on your local machine.
 
-## `ConfigurationBuilder` code in a console application
+## `Program.cs` code
 
 Now that all the setup is completed, lets write some code:
 
+Add a new file to your project called `AppSettings.cs` with the following classes to represent the stucture of the configuration settings. It also adds an `AbstractValidator` that defines the rules 
 ```csharp
-using Microsoft.Extensions.Configuration;
+namespace ConfigurationFundamentals;
 
-var builder = new ConfigurationBuilder()
-		.AddJsonFile("appsettings.json", optional: false)
-		.AddUserSecrets<Program>(options: false);
+public class AppSettings
+{
+    public string AppName { get; set; } = default!;
+    public SecretSettings SecretSettings { get; set; } = default!;
+}
 
-var configuration = builder.Build();
+public class SecretSettings
+{
+    public string SuperSecret { get; set; } = default!;
+}
 
-var appName = configuration["AppName"];
-var superSecret = configuration["SuperSecret"];
-
-Console.WriteLine($"AppName: {appName}");
-Console.WriteLine($"SuperSecret: {superSecret}");
+public class AppSettingsValidator : AbstractValidator<AppSettings>
+{
+    public AppSettingsValidator()
+    {
+        RuleFor(x => x.AppName)
+            .NotEmpty()
+            .WithMessage("AppName is required.");
+        RuleFor(x => x.SecretSettings)
+            .NotNull()
+            .WithMessage("SecretSettings is required.");
+        RuleFor(x => x.SecretSettings.SuperSecret)
+            .NotEmpty()
+            .WithMessage("SuperSecret is required.");
+    }
+}
 ```
 
-Run the application to ensure that you receive the expected output.
+Modify the `Program.cs` file to the following:
 
-```console
-AppName: Learning Basic Application Configuration
-SecretSettings - SuperSecret: My secret is that I love .Net!
-```
-
-There are some important things to note:
-
-- The order the you add the configuration files is important. The last file added will override any values in the previous files.
-- The `AddUserSecrets` method requires a type parameter. The `Program.cs` file implies the existence of the `Program` type. This is used to locate the `secrets.json` file.
-- The `AddUserSecrets` method has an `optional` parameter of type `bool`. This parameter is used to determine if the `secrets.json` file is optional. If the file is not found, an exception will be thrown if the parameter is set to `false`. If the parameter is set to `true`, no exception will be thrown if the file is not found. __If your application requires other developers to set up secrets, it is recommended that you set this value to `false`. This will signal to other developers to setup their user secrets when they run the application.__
-
-## Implement the `IOptions` pattern in a console application
-
-The `IOptions` pattern is a way to structure your configuration keys and values. It also makes for a cleaner code outcome. Using `magic strings` in your application, especially as they grow and become more complex, makes them difficult to maintain.
-
-Install the required NuGet package:
-
-    - `Microsoft.Extensions.Options`
-	- `Microsoft.Extensions.Options.ConfigurationExtensions`
-
-Update the `Program.cs` file to the following:
 ```csharp
-using Microsoft.Extensions.Configuration;
+using ConfigurationFundamentals;
+using FluentValidation;
 
-var builder = new ConfigurationBuilder()
-		.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-		.AddUserSecrets<Program>(options: false);
+var builder = WebApplication.CreateBuilder(args);
 
-var configuration = builder.Build();
+builder.Services.Configure<AppSettings>(builder.Configuration);
+builder.Services.AddOptions<AppSettings>()
+    .Validate(appSettings =>
+    {
+        var validator = new AppSettingsValidator();
+        var result = validator.Validate(appSettings);
+        return result.IsValid;
+    })
+    .ValidateOnStart();
 
-var appSettingsOptions = new OptionsWrapper<AppSettings>(new());
-configuration.Bind(appSettingsOptions);
-var appSettings = appSettingsOptions.Value;
+builder.Services.AddControllers();
+builder.Services.AddOpenApi();
 
-Console.WriteLine($"AppName: {appSettings.AppName}");
-Console.WriteLine($"SuperSecret: {appSettings.SuperSecret}");
+var app = builder.Build();
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+app.Run();
 ```
 
-__Note__: The `AddJsonFile` method has a `reloadOnChange` parameter for type `bool`. This parameter is used to determine if the configuration should be reloaded if the `appsettings.json` file changes. This is useful if you are using the `IOptionsMonitor` pattern. We will explore this later.
+Add the following controller to the `HomeController.cs` file:
 
-See the project `DependencyInversionFundamentals` for using the options pattern with DI.
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
+namespace ConfigurationFundamentals.Controllers;
+
+[ApiController]
+[Route("[controller]")]
+public class HomeController : ControllerBase
+{
+    private readonly IOptions<AppSettings> _appSettingsOptions;
+
+    public HomeController(IOptions<AppSettings> appSettingsOptions)
+    {
+        _appSettingsOptions = appSettingsOptions;
+    }
+
+    [HttpGet(Name = "GetAppSettings")]
+    public AppSettings Get()
+    {
+        return _appSettingsOptions.Value;
+    }
+}
+```
+
+Run the application:
+
+> `https://localhost:7147/home`
+
+Ensure that you receive the expected output:
+
+```json
+{
+  "appName": "Learning Basic Application Configuration",
+  "secretSettings": {
+    "superSecret": "My secret is that I love .Net!"
+  }
+}
+```
 ##  Conclusion
 
-We have demonstrated the importance of application configuration, setting up the ConfigurationBuilder in a .NET 7.0 console application, creating and using `appsettings.json` and `secrets.json` files, and using the Options pattern to provide structure and type safety to our configuration. By effectively managing your application's configuration, you can improve security, maintainability, and deployment flexibility. We hope this presentation has been helpful in understanding the essentials of application configuration in .NET 7.0.
+In this guide, we explored how to configure an ASP.NET Core application using `appsettings.json` for general settings and `secrets.json` for sensitive data, ensuring secure and maintainable configuration management. By leveraging the `IConfiguration` interface, strongly-typed settings with `AppSettings`, and validation with `FluentValidation`, we created a robust configuration pipeline. The setup was validated by building a simple API endpoint that returns the configured values, demonstrating how to access and use configuration data in a controller. This approach provides a scalable foundation for managing application settings while adhering to security best practices by keeping sensitive information out of source control. With these fundamentals, developers can confidently extend configuration to meet the needs of more complex ASP.NET Core applications.
